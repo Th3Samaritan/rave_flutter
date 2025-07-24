@@ -1,22 +1,33 @@
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:meta/meta.dart';
-import 'package:tripledes/tripledes.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
+import 'dart:convert';
 
 bool isEmpty(String string) {
-  return string == null || string.trim().isEmpty;
+  return string.trim().isEmpty;
 }
 
 String formatAmount(num amount) {
-  return new NumberFormat.currency(name: '').format(amount);
+  return NumberFormat.currency(name: '').format(amount);
 }
 
 String getEncryptedData(String str, String key) {
-  var blockCipher = BlockCipher(TripleDESEngine(), key);
-  return blockCipher.encodeB64(str);
+  final paddedKey = key.padRight(24, '0').substring(0, 24); // 24-byte key
+  final iv = encrypt.IV.fromLength(8); // Default 8-byte IV (zeros)
+
+  final encrypter = encrypt.Encrypter(
+    encrypt.ThreeDES(
+      encrypt.Key.fromUtf8(paddedKey),
+      mode: encrypt.ThreeDESMode.ecb,
+      padding: null,
+    ),
+  );
+
+  final encrypted = encrypter.encrypt(str, iv: iv);
+  return encrypted.base64;
 }
 
-/// Remove all line feed, carriage return and whitespace characters
 String cleanUrl(String url) {
   return url.replaceAll(RegExp(r"[\n\r\s]+"), "");
 }
@@ -38,8 +49,8 @@ putIfTrue({@required Map map, @required key, @required bool value}) {
 }
 
 printWrapped(Object text) {
-  final pattern = new RegExp('.{1,800}'); // 800 is the size of each chunk
-  pattern
-      .allMatches(text?.toString())
-      .forEach((match) => debugPrint(match.group(0)));
+  final pattern = RegExp('.{1,800}');
+  pattern.allMatches(text?.toString() ?? '').forEach(
+        (match) => debugPrint(match.group(0)),
+      );
 }
